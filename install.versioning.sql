@@ -94,4 +94,41 @@ END;
 $$ language plpgsql;
 COMMENT ON FUNCTION _v.unregister_patch( TEXT ) IS 'Function to unregister patches in database. Dies if the patch is not registered, or if unregistering it would break dependencies.';
 
+CREATE OR REPLACE FUNCTION _v.assert_user_is_superuser() RETURNS TEXT as $$
+DECLARE
+    v_super bool;
+BEGIN
+    SELECT usesuper INTO v_super FROM pg_user WHERE usename = current_user;
+    IF v_super THEN
+        RETURN 'assert_user_is_superuser: OK';
+    END IF;
+    RAISE EXCEPTION 'Current user is not superuser - cannot continue.';
+END;
+$$ language plpgsql;
+COMMENT ON FUNCTION _v.assert_user_is_superuser() IS 'Function that can be used to make sure that patch is being applied using superuser account.';
+
+CREATE OR REPLACE FUNCTION _v.assert_user_is_not_superuser() RETURNS TEXT as $$
+DECLARE
+    v_super bool;
+BEGIN
+    SELECT usesuper INTO v_super FROM pg_user WHERE usename = current_user;
+    IF v_super THEN
+        RAISE EXCEPTION 'Current user is superuser - cannot continue.';
+    END IF;
+    RETURN 'assert_user_is_not_superuser: OK';
+END;
+$$ language plpgsql;
+COMMENT ON FUNCTION _v.assert_user_is_not_superuser() IS 'Function that can be used to make sure that patch is being applied using normal (not superuser) account.';
+
+CREATE OR REPLACE FUNCTION _v.assert_user_is_one_of(VARIADIC p_acceptable_users TEXT[] ) RETURNS TEXT as $$
+DECLARE
+BEGIN
+    IF current_user = any( p_acceptable_users ) THEN
+        RETURN 'assert_user_is_one_of: OK';
+    END IF;
+    RAISE EXCEPTION 'User is not one of: % - cannot continue.', p_acceptable_users;
+END;
+$$ language plpgsql;
+COMMENT ON FUNCTION _v.assert_user_is_one_of(TEXT[]) IS 'Function that can be used to make sure that patch is being applied by one of defined users.';
+
 COMMIT;
