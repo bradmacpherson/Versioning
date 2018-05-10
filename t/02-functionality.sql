@@ -2,7 +2,7 @@ BEGIN;
     -- load pgtap - change next line to point to correct path for your system!
     \i t/00-load.sql.inc
 
-    SELECT plan(11);
+    SELECT plan(13);
 
     SELECT is( ( SELECT count(*) FROM _v.patches ), 0::bigint, 'When running tests _v.patches table should be empty to prevent bad interactions between patches and tests.' );
 
@@ -15,6 +15,18 @@ BEGIN;
         'SELECT patch_name, applied_tsz, applied_by, requires, conflicts  FROM _v.patches',
         $$SELECT 'first_patch'::text as patch_name, now() as applied_tsz, current_user::TEXT as applied_by, '{}'::TEXT[] as requires, '{}'::TEXT[] as conflicts$$,
         'Sanity check if patch is correctly saved.'
+    );
+
+    SELECT lives_ok(
+        $$SELECT _v.assert_patch_is_applied( 'first_patch' )$$,
+        'Assert first patch is applied.'
+    );
+
+    SELECT throws_ok(
+        $$SELECT _v.assert_patch_is_applied( 'bogus_patch' )$$,
+        'P0001',
+        'Patch bogus_patch is not applied!',
+        'Raise exception when asserting a patch has been applied when it has not.'
     );
 
     SELECT lives_ok(

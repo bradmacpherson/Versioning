@@ -94,6 +94,19 @@ END;
 $$ language plpgsql;
 COMMENT ON FUNCTION _v.unregister_patch( TEXT ) IS 'Function to unregister patches in database. Dies if the patch is not registered, or if unregistering it would break dependencies.';
 
+CREATE OR REPLACE FUNCTION _v.assert_patch_is_applied( IN in_patch_name TEXT ) RETURNS TEXT as $$
+DECLARE
+    t_text TEXT;
+BEGIN
+    SELECT patch_name INTO t_text FROM _v.patches WHERE patch_name = in_patch_name;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Patch % is not applied!', in_patch_name;
+    END IF;
+    RETURN format('Patch %s is applied.', in_patch_name);
+END;
+$$ language plpgsql;
+COMMENT ON FUNCTION _v.assert_patch_is_applied( TEXT ) IS 'Function that can be used to make sure that patch has been applied.';
+
 CREATE OR REPLACE FUNCTION _v.assert_user_is_superuser() RETURNS TEXT as $$
 DECLARE
     v_super bool;
